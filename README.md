@@ -4,7 +4,7 @@ Bingo box is an implementation of a bingo system, where the organizers can creat
 
 This system is only suited for 90-ball bingo, which is considered the "normal" kind of bingo in Denmark where i live 🇩🇰
 
-## Motivation
+## Motivation 🏃‍♀️🏃‍♂️
 
 This is a project that I'm doing for fun, and at the same time it is a way for me to express my current level of Go understanding. But that is not the whole story. In my late highschool years, I was in charge for arranging and organizing a annual christmas bingo. I found it really frustrating to host the event, because of the immense time used on checking a potential winners bingo card pattern (one line, two lines and at last, the full plate). It was hard to hear every number shouted across the room, and maybe some number was not quite right, so then we would have to recite the whole pattern until we could confirm whether or not the player had won. Back then, in 2018, I built a bingo system to solve the problem, which is still in use to this day. But I have now desired to retire my old code and to develop a new system as the old codebase suffered from some hardcoding issues. This time with a backend built in Go instead of Node.js. The frontend will also get an overhaul, but will still be built in React as a single-page application.
 
