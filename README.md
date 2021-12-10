@@ -2,7 +2,7 @@
 
 Bingo box is an implementation of a bingo system, where the organizers can create and host a bingo game by printing id-assigned bingo cards and at the same time easily check if a given bingo card matches the wining patterns.
 
-This system is only suited for 90-ball bingo, which is considered the "normal" kind of bingo in Denmark where i live 🇩🇰
+> Note: This system is only suited for 90-ball bingo, which is considered the "normal" kind of bingo in Denmark where i live 🇩🇰
 
 ## Motivation 🏃‍♀️🏃‍♂️
 
