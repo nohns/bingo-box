@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS games;
+DROP INDEX IF EXISTS games_host_idx;
