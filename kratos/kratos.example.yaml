@@ -26,8 +26,8 @@ selfservice:
         providers:
           - id: google # this is `<provider-id>` in the Authorization callback URL. DO NOT CHANGE IT ONCE SET!
             provider: google
-            client_id: 800978877350-n51ep0beajij0ep7m3bo19q9to1k56bh.apps.googleusercontent.com # Replace this with the OAuth2 Client ID
-            client_secret: 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 # Replace this with the OAuth2 Client secret
+            client_id: client-id # Replace this with the OAuth2 Client ID
+            client_secret: client-secret # Replace this with the OAuth2 Client secret
             mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
             scope:
               - email
