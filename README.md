@@ -1,4 +1,4 @@
-# 👵🏿 👴🏻 Bingo-box
+# 👵🏿 👴🏻 Bingo box
 
 Bingo box is an implementation of a bingo system, where the organizers can create and host a bingo game by printing id-assigned bingo cards and at the same time easily check if a given bingo card matches the wining patterns.
 
