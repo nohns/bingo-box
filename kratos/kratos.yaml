@@ -1,0 +1,107 @@
+version: v0.7.1-alpha.1
+
+dsn: memory
+
+serve:
+  public:
+    base_url: http://127.0.0.1:4433/
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://127.0.0.1:3000
+        - http://192.168.159.76:3000
+    base_url: http://127.0.0.1:4433/
+
+selfservice:
+  default_browser_return_url: http://127.0.0.1:3000/
+  whitelisted_return_urls:
+    - http://127.0.0.1:3000
+
+  methods:
+    password:
+      enabled: true
+    oidc:
+      enabled: true
+      config:
+        providers:
+          - id: google # this is `<provider-id>` in the Authorization callback URL. DO NOT CHANGE IT ONCE SET!
+            provider: google
+            client_id: 800978877350-n51ep0beajij0ep7m3bo19q9to1k56bh.apps.googleusercontent.com # Replace this with the OAuth2 Client ID
+            client_secret: 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 # Replace this with the OAuth2 Client secret
+            mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
+            scope:
+              - email
+              - profile
+              # other supported scopes can be found in Google OAuth 2.0 dev docs
+            requested_claims:
+              id_token:
+                email:
+                  essential: true
+                email_verified:
+                  essential: true
+                given_name:
+                  essential: true
+                family_name:
+                  essential: true
+
+  flows:
+    error:
+      ui_url: http://127.0.0.1:3000/error
+
+    settings:
+      ui_url: http://127.0.0.1:3000/settings
+      privileged_session_max_age: 15m
+
+    recovery:
+      enabled: true
+      ui_url: http://127.0.0.1:3000/recovery
+
+    verification:
+      enabled: true
+      ui_url: http://127.0.0.1:3000/verification
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/
+
+    logout:
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/login
+
+    login:
+      ui_url: http://127.0.0.1:3000/login
+      lifespan: 10m
+
+    registration:
+      lifespan: 10m
+      ui_url: http://127.0.0.1:3000/getting-started
+      after:
+        oidc:
+          hooks:
+            - hook: session
+        password:
+          hooks:
+            - hook: session
+
+log:
+  format: text
+  leak_sensitive_values: true
+
+secrets:
+  cookie:
+    - t?z-,Ey8m<<,o?h8B_iQ>FD&%}a?v~8^R8JCq$=0m/YooOf#$rU86/uZsy*u5:e
+  cipher:
+    - ExkrwieVpvYKdScqsxFjeUEUQZ5E4MXF
+
+ciphers:
+  algorithm: xchacha20-poly1305
+
+hashers:
+  algorithm: bcrypt
+  bcrypt:
+    cost: 8
+
+identity:
+  default_schema_url: file:///etc/config/kratos/identity.schema.json
+
+courier:
+  smtp:
+    connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true

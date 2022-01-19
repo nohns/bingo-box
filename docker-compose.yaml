@@ -1,0 +1,69 @@
+version: '3.7'
+
+services:
+  kratos-migrate:
+    image: oryd/kratos:v0.8.0-alpha.3
+    environment:
+      - DSN=postgres://kratos:secret@postgresd:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    command: migrate sql --yes -e -c /etc/config/kratos/kratos.yaml 
+    volumes:
+      -
+        type: bind
+        source: ./kratos
+        target: /etc/config/kratos
+    restart: on-failure
+    depends_on:
+      - postgresd
+    networks:
+      - intranet
+
+  kratos:
+    image: oryd/kratos:v0.8.0-alpha.3
+    ports:
+      - '4433:4433' # public
+      - '4434:4434' # admin
+    restart: unless-stopped
+    environment:
+      - DSN=postgres://kratos:secret@postgresd:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+      - LOG_LEVEL=trace
+    command: serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier
+    depends_on:
+      - kratos-migrate
+    volumes:
+      -
+        type: bind
+        source: ./kratos
+        target: /etc/config/kratos
+    networks:
+      - intranet
+
+  postgresd:
+    image: postgres:9.6
+    volumes:
+      - 
+        type: volume
+        source: kratos-postgres
+        target: /var/lib/postgresql/data
+        read_only: false
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=kratos
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=kratos
+    networks:
+      - intranet
+
+  mailslurper:
+    image: oryd/mailslurper:latest-smtps
+    ports:
+      - '4436:4436'
+      - '4437:4437'
+    networks:
+      - intranet
+
+networks:
+  intranet:
+
+volumes:
+  kratos-postgres:
