@@ -144,6 +144,10 @@ type Game struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+func (g *Game) Validate() error {
+	return nil
+}
+
 func (g *Game) CreateRandomCard(rs rand.Source, number int) *Card {
 	return CreateRandomCard(rs, g.ID, number)
 }

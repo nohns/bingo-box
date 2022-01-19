@@ -2,98 +2,68 @@ package config
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
 )
 
+// TODO: overhaul config system with reflection instead of constants
 type Conf struct {
-	DB   dbConf
-	HTTP httpConf
+	DB   dbConf   `conf:"db" validate:"required"`
+	HTTP httpConf `conf:"http" validate:"required"`
+	Mail mailConf `conf:"mail" validate:"required"`
 }
 
 type dbConf struct {
 	// DSN
-	Host   string
-	Port   string
-	Name   string
-	Schema string
-	User   string
-	Pass   string
+	Host   string `validate:"required" help:"Host of PostgreSQL database"`
+	Port   string `validate:"required" help:"Port of PostgreSQL database"`
+	Name   string `validate:"required" help:"Database name used"`
+	Schema string `help:"Schema used in the database"`
+	User   string `validate:"required" help:"Username of PostgreSQL user"`
+	Pass   string `validate:"required" help:"Password of PostgreSQL user"`
 
 	// Migrations
-	Migrate        bool
-	MigrationsPath string
+	Migrate        bool   `help:"Set this flag to false to disable migrations"`
+	MigrationsPath string `validate:"required" help:"A path to the folder containing migrations"`
 }
 
 type httpConf struct {
-	Address   string
-	Port      string
-	JWTSecret string
-	APIKey    string
+	Address   string `validate:"required" help:"Address for HTTP server to listen on"`
+	Port      string `validate:"required" help:"Port for HTTP server to listen on"`
+	JWTSecret string `conf:"jwt secret" validate:"required" help:"JWT secret used for signing access tokens"`
+	APIKey    string `conf:"api key" validate:"required" help:"(deprecated) API key used for remote autorized access"`
 }
 
-// Root field name for config. Convention over configuration!
-// E.g "db host" field as env var will look like DB_HOST.
-const (
-	ConfDBHost   = "db host"
-	ConfDBPort   = "db port"
-	ConfDBName   = "db name"
-	ConfDBSchema = "db schema"
-	ConfDBUser   = "db user"
-	ConfDBPass   = "db pass"
+type mailConf struct {
+	DLLinkBase string `conf:"dl link base" validate:"required" help:""`
 
-	ConfDBMigrate        = "db migrate"
-	ConfDBMigrationsPath = "db migrations path"
+	// Mail gun credentials
+	MGDomain string `conf:"mg domain" validate:"required"`
+	MGAPIKey string `conf:"mg api key" validate:"required"`
+}
 
-	ConfHTTPAddress   = "http address"
-	ConfHTTPPort      = "http port"
-	ConfHTTPJWTSecret = "http jwt secret"
-	ConfHTTPAPIKey    = "http api key"
-)
-
-func (c Conf) Validate() error {
+func (c Conf) Validate(confNamespaces map[string]string) error {
 
 	valErr := newValidationError()
 
-	// Test config fields for errors
-	if c.DB.Host == "" {
-		valErr.empty(ConfDBHost)
-	}
-	if c.DB.Port == "" {
-		valErr.empty(ConfDBPort)
-	}
-	if _, err := strconv.Atoi(c.DB.Port); err != nil {
-		valErr.finvalid(ConfDBPort, "has to be a number")
-	}
-	if c.DB.Name == "" {
-		valErr.empty(ConfDBName)
-	}
-	if c.DB.Schema == "" {
-		valErr.empty(ConfDBSchema)
-	}
-	if c.DB.User == "" {
-		valErr.empty(ConfDBUser)
-	}
-	if c.DB.Pass == "" {
-		valErr.empty(ConfDBPass)
-	}
-	if c.DB.MigrationsPath == "" {
-		valErr.empty(ConfDBMigrationsPath)
-	}
-	if c.HTTP.Address == "" {
-		valErr.empty(ConfHTTPAddress)
-	}
-	if c.HTTP.Port == "" {
-		valErr.empty(ConfHTTPPort)
-	}
-	if _, err := strconv.Atoi(c.HTTP.Port); err != nil {
-		valErr.finvalid(ConfHTTPPort, "has to be a number")
-	}
-	if c.HTTP.JWTSecret == "" {
-		valErr.empty(ConfHTTPJWTSecret)
-	}
-	if c.HTTP.APIKey == "" {
-		valErr.empty(ConfHTTPAPIKey)
+	v := validator.New()
+	err := v.Struct(c)
+	if err != nil {
+		errs, ok := err.(validator.ValidationErrors)
+		if !ok {
+			return err
+		}
+
+		for _, err := range errs {
+			confField := confNamespaces[err.StructNamespace()]
+			switch err.Tag() {
+			case "required":
+				valErr.empty(confField)
+			default:
+				valErr.invalid(confField, "validation with tag '%s' failed", err.Tag())
+			}
+		}
 	}
 
 	// Final result
@@ -105,8 +75,8 @@ func (c Conf) Validate() error {
 }
 
 // Construct DSN from config
-func (c Conf) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", c.DB.User, c.DB.Pass, c.DB.Host, c.DB.Port, c.DB.Name)
+func (c Conf) ConnURI() string {
+	return fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", c.DB.User, c.DB.Pass, c.DB.Host, c.DB.Port, c.DB.Name)
 }
 
 // Construct http listener address from config
@@ -132,12 +102,12 @@ func (e *ConfValidationError) finvalid(field, reason string) {
 	e.invalid(field, fmt.Sprintf("%s %s", field, reason))
 }
 
-func (e *ConfValidationError) invalid(field, reason string) {
+func (e *ConfValidationError) invalid(field, reasonFmt string, v ...interface{}) {
 	if _, ok := e.invalidFields[field]; !ok {
 		e.invalidFields[field] = make([]string, 0, 1)
 	}
 
-	e.invalidFields[field] = append(e.invalidFields[field], reason)
+	e.invalidFields[field] = append(e.invalidFields[field], fmt.Sprintf(reasonFmt, v...))
 }
 
 func (e *ConfValidationError) isOk() bool {
@@ -172,7 +142,7 @@ func Read() (Conf, error) {
 			Name:   "bingo_box_db",
 			Schema: "public",
 
-			Migrate:        true,
+			Migrate:        false,
 			MigrationsPath: "file://postgres/migration",
 		},
 		HTTP: httpConf{
@@ -181,13 +151,13 @@ func Read() (Conf, error) {
 		},
 	}
 
-	// Go from least to most specific source. E.g flags override env vars and env vars override file config
-	fromFile(&conf)
-	fromEnv(&conf)
-	fromFlags(&conf)
-
+	// Go from least to most specific source. E.g file config is overridden by env, and env is overridden by flags
+	refl, err := reflectVals(&conf, fromEnv, fromFlags /*, fromFile*/)
+	if err != nil {
+		return Conf{}, err
+	}
 	// Validate the config, to make sure application can use it
-	if err := conf.Validate(); err != nil {
+	if err := conf.Validate(refl.namespaces); err != nil {
 		return Conf{}, err
 	}
 

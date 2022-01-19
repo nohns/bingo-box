@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	bingo "github.com/nohns/bingo-box/server"
 )
 
 type validationFieldError struct {
@@ -81,4 +82,26 @@ func validateBody(body interface{}) (error, bool) {
 	}
 
 	return err, err == nil
+}
+
+func translateBingoValidationErr(err bingo.ValidationErr) validationData {
+	valData := make(validationData)
+	for f, fErrs := range err.FieldErrs {
+		lowerF := strings.ToLower(f[:1]) + f[1:]
+
+		vFieldErrs := make([]validationFieldError, 0, len(fErrs))
+		for _, fe := range fErrs {
+			vFieldErrs = append(vFieldErrs, validationFieldError{
+				Reason:  fe.Kind,
+				Message: fe.Msg,
+			})
+		}
+
+		valData[lowerF] = &validationField{
+			FieldName: lowerF,
+			Errors:    vFieldErrs,
+		}
+	}
+
+	return valData
 }

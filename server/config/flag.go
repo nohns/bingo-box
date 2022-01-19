@@ -3,24 +3,47 @@ package config
 import (
 	"flag"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
-func fromFlags(conf *Conf) {
-	flag.StringVar(&conf.DB.Host, flagName(ConfDBHost), conf.DB.Host, "")
-	flag.StringVar(&conf.DB.Port, flagName(ConfDBPort), conf.DB.Port, "")
-	flag.StringVar(&conf.DB.Name, flagName(ConfDBName), conf.DB.Name, "")
-	flag.StringVar(&conf.DB.Schema, flagName(ConfDBSchema), conf.DB.Schema, "")
-	flag.StringVar(&conf.DB.User, flagName(ConfDBUser), conf.DB.User, "")
-	flag.StringVar(&conf.DB.Pass, flagName(ConfDBPass), conf.DB.Pass, "")
+type fromFlagsProvider valueProviderFunc
 
-	flag.BoolVar(&conf.DB.Migrate, flagName(ConfDBMigrate), conf.DB.Migrate, "")
-	flag.StringVar(&conf.DB.MigrationsPath, flagName(ConfDBMigrationsPath), conf.DB.MigrationsPath, "")
+func (p fromFlagsProvider) Provide(confField string, field reflect.StructField) (valuer, error) {
+	return p(confField, field)
+}
 
-	flag.StringVar(&conf.HTTP.Address, flagName(ConfHTTPAddress), conf.HTTP.Address, "")
-	flag.StringVar(&conf.HTTP.Port, flagName(ConfHTTPPort), conf.HTTP.Port, "")
-	flag.StringVar(&conf.HTTP.JWTSecret, flagName(ConfHTTPJWTSecret), conf.HTTP.JWTSecret, "")
-	flag.StringVar(&conf.HTTP.APIKey, flagName(ConfHTTPAPIKey), conf.HTTP.APIKey, "")
+func (p fromFlagsProvider) AfterProvide() error {
+	flag.Parse()
+	return nil
+}
+
+var fromFlags = fromFlagsProvider(fromFlagsValue)
+
+func fromFlagsValue(confField string, field reflect.StructField) (valuer, error) {
+	f := flagger{
+		stringValuer: stringValuer{
+			kind: field.Type.Kind(),
+		},
+	}
+
+	flag.Var(&f, flagName(confField), field.Tag.Get("help"))
+	return &f, nil
+}
+
+type flagger struct {
+	stringValuer
+}
+
+func (f *flagger) IsBoolFlag() bool {
+	return f.kind == reflect.Bool
+}
+func (f *flagger) String() string {
+	return f.input
+}
+func (f *flagger) Set(val string) error {
+	f.input = val
+	return nil
 }
 
 func flagName(field string) string {

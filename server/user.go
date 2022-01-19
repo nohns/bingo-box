@@ -24,29 +24,7 @@ type Hasher interface {
 }
 
 type UserService struct {
-	hasher   Hasher
 	userRepo UserRepository
-}
-
-// Register and persist user with a hashed password
-func (us *UserService) Register(ctx context.Context, name, email, passwd string) (*User, error) {
-
-	// Create hash of password
-	hash, err := us.hasher.Hash(passwd)
-	if err != nil {
-		return nil, err
-	}
-
-	// Register user and get the user model
-	u := RegisterUser(name, email, hash)
-
-	// Try to persist the user
-	err = us.userRepo.Save(ctx, u)
-	if err != nil {
-		return nil, err
-	}
-
-	return u, nil
 }
 
 // Authenticate user by email and password. If the credentials are valid, a user is returned and otherwise an error.
@@ -57,19 +35,13 @@ func (us *UserService) Authenticate(ctx context.Context, email, passwd string) (
 		return nil, err
 	}
 
-	// Match password of user found by email
-	if err := us.hasher.Compare(u.HashedPassword, passwd); err != nil {
-		return nil, err
-	}
-
 	return u, nil
 }
 
 // Instantiate a new user service with a user repoistory.
-func NewUserService(userRepo UserRepository, hasher Hasher) *UserService {
+func NewUserService(userRepo UserRepository) *UserService {
 	return &UserService{
 		userRepo: userRepo,
-		hasher:   hasher,
 	}
 }
 
@@ -78,15 +50,15 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	HashedPassword []byte `json:"-"`
+	GameCredits int
 
 	UpdatedAt time.Time `json:"updatedAt"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
 // See if user object is valid
-func (u *User) Validate() {
-
+func (u *User) Validate() error {
+	return nil
 }
 
 func (u *User) CreateGame(name string) *Game {
@@ -94,12 +66,11 @@ func (u *User) CreateGame(name string) *Game {
 }
 
 // Register user by their information and return a user with a hash password.
-func RegisterUser(name, email string, hashedPasswd []byte) *User {
+func RegisterUser(name, email string) *User {
 	return &User{
-		Name:           name,
-		Email:          email,
-		HashedPassword: hashedPasswd,
-		UpdatedAt:      time.Now(),
-		CreatedAt:      time.Now(),
+		Name:      name,
+		Email:     email,
+		UpdatedAt: time.Now(),
+		CreatedAt: time.Now(),
 	}
 }

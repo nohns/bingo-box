@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type CardSaveHandler func(ctx context.Context, card bingo.Card) error
+type CardSaveHandler func(ctx context.Context, card *bingo.Card) error
 type CardSaveAllHandler func(ctx context.Context, cards []bingo.Card) error
 type CardGetByNumberHandler func(ctx context.Context, cardNum int, gameId string) (*bingo.Card, error)
 
@@ -42,7 +42,7 @@ func (gr *CardRespository) ExpectGetByNumber(h CardGetByNumberHandler) {
 	gr.getByNumbersExpected++
 }
 
-func (gr *CardRespository) Save(ctx context.Context, card bingo.Card) error {
+func (gr *CardRespository) Save(ctx context.Context, card *bingo.Card) error {
 	require.Less(gr.tb, gr.savesExecuted, gr.savesExpected, "mock(card_repository): Save() called more times than expected")
 
 	h := gr.saveHandlers[gr.savesExecuted]

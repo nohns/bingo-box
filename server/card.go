@@ -12,7 +12,7 @@ var (
 )
 
 type CardRepository interface {
-	Save(ctx context.Context, card Card) error
+	Save(ctx context.Context, card *Card) error
 	SaveAll(ctx context.Context, cards []Card) error
 	GetByNumber(ctx context.Context, cardNum int, gameId string) (*Card, error)
 }
@@ -25,7 +25,15 @@ type Card struct {
 	// Game in which the bingo card is used
 	GameID string `json:"gameId"`
 
+	// Player who owns the card, if it was generated via invitation
+	PlayerID string  `json:"playerId,omitempty"`
+	Player   *Player `json:"player,omitempty"`
+
 	GridNumbers []CardGridNumber `json:"gridNumbers"`
+}
+
+func (c *Card) Validate() error {
+	return nil
 }
 
 type CardMatrix [3][9]int

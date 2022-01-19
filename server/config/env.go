@@ -2,59 +2,25 @@ package config
 
 import (
 	"os"
+	"reflect"
 	"strings"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 )
 
-func fromEnv(conf *Conf) {
+type fromEnvProvider valueProviderFunc
 
-	// Try to load from .env file, if it exists
-	godotenv.Load()
+func (p fromEnvProvider) Provide(confField string, field reflect.StructField) (valuer, error) {
+	return p(confField, field)
+}
 
-	if val := os.Getenv(envVarName(ConfDBHost)); val != "" {
-		conf.DB.Host = val
-	}
-	if val := os.Getenv(envVarName(ConfDBPort)); val != "" {
-		conf.DB.Port = val
-	}
-	if val := os.Getenv(envVarName(ConfDBName)); val != "" {
-		conf.DB.Name = val
-	}
-	if val := os.Getenv(envVarName(ConfDBSchema)); val != "" {
-		conf.DB.Schema = val
-	}
-	if val := os.Getenv(envVarName(ConfDBUser)); val != "" {
-		conf.DB.User = val
-	}
-	if val := os.Getenv(envVarName(ConfDBPass)); val != "" {
-		conf.DB.Pass = val
-	}
+var fromEnv = fromEnvProvider(fromEnvValue)
 
-	if val := os.Getenv(envVarName(ConfDBMigrate)); val != "" {
-		boolStr := strings.ToLower(val)
-		if boolStr == "false" {
-			conf.DB.Migrate = false
-		} else if boolStr == "true" {
-			conf.DB.Migrate = false
-		}
-	}
-	if val := os.Getenv(envVarName(ConfDBMigrationsPath)); val != "" {
-		conf.HTTP.Address = val
-	}
-
-	if val := os.Getenv(envVarName(ConfHTTPAddress)); val != "" {
-		conf.HTTP.Address = val
-	}
-	if val := os.Getenv(envVarName(ConfHTTPPort)); val != "" {
-		conf.HTTP.Port = val
-	}
-	if val := os.Getenv(envVarName(ConfHTTPJWTSecret)); val != "" {
-		conf.HTTP.JWTSecret = val
-	}
-	if val := os.Getenv(envVarName(ConfHTTPAPIKey)); val != "" {
-		conf.HTTP.APIKey = val
-	}
+func fromEnvValue(confField string, field reflect.StructField) (valuer, error) {
+	return &stringValuer{
+		input: os.Getenv(envVarName(confField)),
+		kind:  field.Type.Kind(),
+	}, nil
 }
 
 func envVarName(field string) string {

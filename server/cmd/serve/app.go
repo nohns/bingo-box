@@ -4,73 +4,63 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	bingo "github.com/nohns/bingo-box/server"
 	"github.com/nohns/bingo-box/server/bcrypt"
 	"github.com/nohns/bingo-box/server/config"
 	"github.com/nohns/bingo-box/server/http"
 	"github.com/nohns/bingo-box/server/logger"
-	"github.com/nohns/bingo-box/server/postgres"
+	"github.com/nohns/bingo-box/server/mail"
+	"github.com/nohns/bingo-box/server/mongo"
 )
 
 type App struct {
 	Log        logger.Logger
 	HTTPServer *http.Server
 	Conf       config.Conf
+	Mailer     *mail.Mailer
 }
 
 // Boostrap the server application
 func (a *App) Bootstrap(ctx context.Context) error {
 
-	// Run dependency prechecks...
-	// Validate configuration
-	err := a.Precheck()
-	if err != nil {
-		a.Log.Err("failed application prechecks")
-		return err
-	}
-
 	// Setup bcrypt hasher
 	hasher := bcrypt.NewHasher()
 
-	// Setup postgres DB dependency
-	db, err := postgres.NewDB(ctx, a.Conf.DSN(), a.Conf.DB.MigrationsPath)
+	// Setup mongodb dependency
+	mongoCtx, mongoCancel := context.WithTimeout(ctx, 5*time.Second)
+	db, err := mongo.New(mongoCtx, a.Conf.ConnURI())
+	mongoCancel()
 	if err != nil {
 		return err
 	}
 
-	// Migrate database up if enabled
-	if a.Conf.DB.Migrate {
-		if err = db.MigrateDown(); err != nil {
-			return err
-		}
-		if err = db.MigrateUp(); err != nil {
-			return err
-		}
-	}
+	a.Mailer = mail.NewMailer(a.Conf.Mail.MGDomain, a.Conf.Mail.MGAPIKey)
+	a.Mailer.BaseDownloadLink = a.Conf.Mail.DLLinkBase
 
-	// Setup postgres repo dependencies
-	userRepo := postgres.NewUserRepository(db)
+	// Setup repos dependencies
+	userRepo := mongo.NewUserRepository(db)
+	invRepo := mongo.NewInvitationRepository(db)
+	playerRepo := mongo.NewPlayerRepository(db)
+	gameRepo := mongo.NewGameRepository(db)
+	cardRepo := mongo.NewCardRepository(db)
 
 	// Setup domain services
 	userSvc := bingo.NewUserService(userRepo, hasher)
+	gameSvc := bingo.NewGameService(gameRepo, cardRepo)
+	invSvc := bingo.NewInvitationService(invRepo, playerRepo)
+	playerSvc := bingo.NewPlayerService(playerRepo)
 
 	// Setup HTTP rest server
 	a.HTTPServer = http.NewServer(a.Conf.HTTP.APIKey)
 	a.HTTPServer.UserService = userSvc
+	a.HTTPServer.GameService = gameSvc
+	a.HTTPServer.InvitationService = invSvc
+	a.HTTPServer.PlayerService = playerSvc
+
 	a.HTTPServer.Addr = a.Conf.HTTPListenAddr()
 	a.HTTPServer.Log = a.Log
-
-	return nil
-}
-
-// Run checks need before application can start
-func (a *App) Precheck() error {
-	// Validate configuration
-	err := a.Conf.Validate()
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

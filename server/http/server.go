@@ -18,9 +18,11 @@ type Server struct {
 	Log logger.Logger
 
 	// Exposed dependencies
-	Addr        string
-	UserService *bingo.UserService
-	GameService *bingo.GameService
+	Addr              string
+	UserService       *bingo.UserService
+	GameService       *bingo.GameService
+	InvitationService *bingo.InvitationService
+	PlayerService     *bingo.PlayerService
 }
 
 // Start to listen on http address and serve http request. Block until error occurs.
@@ -53,15 +55,19 @@ func NewServer(apiKey string) *Server {
 	s.http.Handler = http.HandlerFunc(s.serveHTTP)
 
 	// Create resource routers
-	gameRtr := s.router.PathPrefix("/games").Subrouter()
 	authRtr := s.router.PathPrefix("/auth").Subrouter()
+	gameRtr := s.router.PathPrefix("/games").Subrouter()
+	invRtr := s.router.PathPrefix("/invitations").Subrouter()
+	playerRtr := s.router.PathPrefix("/players").Subrouter()
 
 	// Register shared middleware
 	s.authMiddleware = apiKeyMiddlewareFactory(apiKey)
 
 	// Register resource routes. Some with middleware
-	s.registerGameRoutes(gameRtr, s.authMiddleware)
 	s.registerAuthRoutes(authRtr)
+	s.registerGameRoutes(gameRtr, s.authMiddleware)
+	s.registerInvitationRoutes(invRtr)
+	s.RegisterPlayerRoutes(playerRtr)
 
 	return s
 }
