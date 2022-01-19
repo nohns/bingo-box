@@ -1,0 +1,4 @@
+DROP TYPE IF EXISTS INVITATION_DELIVERY_METHOD;
+
+DROP TABLE IF EXISTS game_invitations;
+DROP INDEX IF EXISTS game_invitations_game_idx;

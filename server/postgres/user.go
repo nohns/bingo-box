@@ -84,8 +84,8 @@ func (ur *UserRepository) insert(ctx context.Context, u *bingo.User) error {
 	defer tx.Rollback(ctx)
 	var uuid uuid.UUID
 
-	sql := "INSERT INTO users (name, email, hashed_password, updated_at, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id"
-	err = ur.psql.conn.QueryRow(ctx, sql, u.Name, u.Email, u.HashedPassword, u.UpdatedAt, u.CreatedAt).Scan(&uuid)
+	sql := "INSERT INTO users (name, email, updated_at, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id"
+	err = ur.psql.conn.QueryRow(ctx, sql, u.Name, u.Email, u.UpdatedAt, u.CreatedAt).Scan(&uuid)
 	if err != nil {
 		return ur.translatePSQLError(err)
 	}
@@ -118,8 +118,8 @@ func (ur *UserRepository) update(ctx context.Context, u *bingo.User) error {
 	var newUpdatedAt time.Time
 
 	// Try update user data
-	sql := "UPDATE users SET name = $1, email = $2, hashed_password = $3, updated_at = CURRENT_TIMESTAMP() WHERE id = $4 RETURNING updated_at"
-	err = ur.psql.conn.QueryRow(ctx, sql, u.Name, u.Email, u.HashedPassword, uuid).Scan(&newUpdatedAt)
+	sql := "UPDATE users SET name = $1, email = $2, updated_at = CURRENT_TIMESTAMP() WHERE id = $4 RETURNING updated_at"
+	err = ur.psql.conn.QueryRow(ctx, sql, u.Name, u.Email, uuid).Scan(&newUpdatedAt)
 	if err != nil {
 		return ur.translatePSQLError(err)
 	}
